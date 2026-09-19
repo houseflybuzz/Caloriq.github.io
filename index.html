@@ -1,1 +1,321 @@
-index
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Trackly</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:#0a0c0e;color:#e6e8ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+body.light{background:#f5f6f8;color:#1a1d21}
+#banner{background:#c1272d;color:#fff;padding:10px 16px;display:flex;align-items:flex-start;gap:10px}
+#banner .dot{width:8px;height:8px;background:#fff;border-radius:50%;margin-top:6px;flex-shrink:0}
+#banner .bt{flex:1;font-size:12.5px;line-height:1.5}
+#banner .bt strong{display:block;font-size:13px;font-weight:700;text-transform:uppercase;margin-bottom:2px}
+#banner .x{cursor:pointer;color:rgba(255,255,255,.7);font-size:16px;padding:2px 4px}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #1a1d21;position:sticky;top:0;background:inherit;z-index:5}
+body.light #topbar{border-color:#e0e2e6}
+#topbar h1{font-size:16px;font-weight:600}
+#topbar .icons{display:flex;gap:6px;align-items:center}
+#topbar .icon{width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%}
+#topbar .icon:hover{background:#1a1d21}
+#topbar .icon svg{width:18px;height:18px;stroke:#6b7280;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.streak{display:flex;align-items:center;gap:4px;font-size:12px;color:#fbbf24;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(251,191,36,.1)}
+.streak svg{width:14px;height:14px;stroke:#fbbf24;fill:none;stroke-width:2}
+#content{flex:1 1 auto;padding:16px 20px}
+.screen{display:none}.screen.active{display:block}
+.card{background:#111418;border:1px solid #1a1d21;border-radius:8px;margin-bottom:12px;overflow:hidden}
+body.light .card{background:#fff;border-color:#e0e2e6}
+.summary{background:#111418;border:1px solid #1a1d21;border-radius:8px;padding:20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+body.light .summary{background:#fff;border-color:#e0e2e6}
+.summary .left{display:flex;flex-direction:column;gap:6px}
+.summary .label{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:500}
+.summary .num{font-size:32px;font-weight:700;letter-spacing:-1px;line-height:1}
+.summary .sub{font-size:12px;color:#6b7280;margin-top:2px}
+.summary .ring{width:64px;height:64px;border-radius:50%;background:conic-gradient(#14b8a6 0deg,#1a1d21 0deg);display:flex;align-items:center;justify-content:center;position:relative}
+.summary .ring::after{content:'';position:absolute;inset:6px;background:#111418;border-radius:50%}
+body.light .summary .ring::after{background:#fff}
+.summary .ring .pct{position:relative;z-index:1;font-size:13px;font-weight:600}
+.macros{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#1a1d21;border-radius:8px;overflow:hidden;margin-bottom:16px}
+body.light .macros{background:#e0e2e6}
+.macro{background:#111418;padding:14px 12px}
+body.light .macro{background:#fff}
+.macro .name{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:6px}
+.macro .val{font-size:16px;font-weight:600}
+.macro .val span{font-size:11px;color:#6b7280;font-weight:500;margin-left:2px}
+.macro.carb .val{color:#60a5fa}.macro.fat .val{color:#fbbf24}.macro.prot .val{color:#f87171}
+.tip{background:linear-gradient(135deg,rgba(20,184,166,.15),rgba(96,165,250,.1));border:1px solid rgba(20,184,166,.3);border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;line-height:1.5}
+.tip .tlabel{font-size:10px;color:#14b8a6;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:6px}
+.water-card{background:#111418;border:1px solid #1a1d21;border-radius:8px;padding:14px 16px;margin-bottom:16px}
+body.light .water-card{background:#fff;border-color:#e0e2e6}
+.water-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.water-head .title{font-size:13px;font-weight:600}
+.water-head .count{font-size:12px;color:#6b7280;font-weight:500}
+.water-glasses{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.glass{aspect-ratio:1;border-radius:4px;background:#1a1d21;border:1px solid #232a33;cursor:pointer}
+body.light .glass{background:#eef0f3;border-color:#d8dbe0}
+.glass.filled{background:#60a5fa;border-color:#60a5fa}
+.sh{font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:8px;margin-top:4px;display:flex;align-items:center;justify-content:space-between}
+.sh .action{color:#14b8a6;cursor:pointer;font-size:11px;text-transform:none;letter-spacing:0;font-weight:600}
+.meal{background:#111418;border:1px solid #1a1d21;border-radius:8px;margin-bottom:8px;overflow:hidden}
+body.light .meal{background:#fff;border-color:#e0e2e6}
+.meal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
+.meal-h .t{font-size:14px;font-weight:600}
+.meal-h .c{font-size:12px;color:#6b7280;font-weight:500}
+.meal-list{padding:0 16px}
+.meal-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid #1a1d21;font-size:13px}
+body.light .meal-item{border-color:#e0e2e6}
+.meal-item .name{cursor:pointer;flex:1}
+.meal-item .name:hover{color:#14b8a6}
+.meal-item .cal{color:#6b7280;font-weight:500}
+.meal-item .del{color:#6b7280;cursor:pointer;margin-left:10px;font-size:14px;padding:0 4px}
+.meal-item .del:hover{color:#f87171}
+.meal-empty{padding:0 16px 12px;font-size:12px;color:#4b5563;font-style:italic}
+.meal-add{display:flex;align-items:center;justify-content:center;padding:12px;color:#14b8a6;font-weight:500;font-size:13px;cursor:pointer;border-top:1px solid #1a1d21}
+body.light .meal-add{border-color:#e0e2e6}
+.row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1a1d21;cursor:pointer}
+body.light .row{border-color:#e0e2e6}
+.row:last-child{border-bottom:none}
+.row .label{font-size:13px;color:#9ca3af}
+.row .value{font-size:13px;font-weight:500}
+.chart{display:flex;align-items:flex-end;justify-content:space-between;height:140px;gap:8px;padding:8px 0}
+.bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.bar-bg{flex:1;width:100%;background:#1a1d21;border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}
+body.light .bar-bg{background:#eef0f3}
+.bar-fill{width:100%;background:#14b8a6;border-radius:4px 4px 0 0;min-height:2px}
+.bar-fill.over{background:#f87171}
+.bar-l{font-size:10px;color:#6b7280;text-transform:uppercase}
+.bar-c{font-size:10px;color:#9ca3af;font-weight:600}
+.empty{text-align:center;padding:40px 20px;color:#4b5563;font-size:13px;line-height:1.7}
+.tier{background:#111418;border:1px solid #1a1d21;border-radius:8px;padding:18px;margin-bottom:10px;position:relative}
+body.light .tier{background:#fff;border-color:#e0e2e6}
+.tier.featured{border-color:#14b8a6}
+.tier-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+.tier-n{font-size:14px;font-weight:600}
+.tier-p{font-size:18px;font-weight:700}
+.tier-p .per{font-size:11px;color:#6b7280;font-weight:400;margin-left:2px}
+.tier-f{font-size:12px;color:#9ca3af;line-height:1.9}
+.tier-badge{position:absolute;top:-1px;right:16px;background:#14b8a6;color:#0a0c0e;padding:3px 8px;border-radius:0 0 4px 4px;font-size:10px;font-weight:700}
+#nav{display:flex;background:inherit;border-top:1px solid #1a1d21;padding:8px 0 max(8px,env(safe-area-inset-bottom));position:fixed;bottom:0;left:0;right:0;width:100%;z-index:10}
+body.light #nav{border-color:#e0e2e6}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0;cursor:pointer;color:#4b5563;font-size:10px;font-weight:500}
+.nav-item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{color:#14b8a6}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-end;z-index:100}
+.modal.open{display:flex}
+.sheet{background:#111418;width:100%;border-radius:16px 16px 0 0;padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto}
+body.light .sheet{background:#fff}
+.sheet h2{font-size:16px;font-weight:600;margin-bottom:16px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:1px;font-weight:500;margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;background:#0a0c0e;border:1px solid #1a1d21;color:inherit;border-radius:6px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none}
+body.light .field input,body.light .field select,body.light .field textarea{background:#f5f6f8;border-color:#e0e2e6}
+.fr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.fr .field{margin-bottom:0}
+.actions{display:flex;gap:8px;margin-top:16px}
+.actions button{flex:1;padding:12px;border-radius:8px;border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.btn-c{background:#1a1d21;color:#e6e8ea}
+body.light .btn-c{background:#eef0f3;color:#1a1d21}
+.btn-s{background:#14b8a6;color:#0a0c0e}
+.saved-list{max-height:200px;overflow-y:auto;border:1px solid #1a1d21;border-radius:6px;margin-bottom:12px;background:#0a0c0e}
+body.light .saved-list{background:#f5f6f8;border-color:#e0e2e6}
+.saved-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #1a1d21;cursor:pointer;font-size:13px}
+.saved-item:last-child{border-bottom:none}
+.saved-item .sname{color:inherit}
+.saved-item .scal{color:#6b7280;font-weight:500;font-size:12px}
+.saved-empty{padding:14px;text-align:center;color:#4b5563;font-size:12px;font-style:italic}
+.saved-search{width:100%;background:#0a0c0e;border:1px solid #1a1d21;color:inherit;border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;margin-bottom:8px}
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(100px);background:#1a1d21;color:#e6e8ea;padding:12px 20px;border-radius:8px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:12px;z-index:200;transition:transform .3s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast button{background:none;border:none;color:#14b8a6;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit;padding:0}
+.choice-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.choice-btn{padding:14px 8px;border-radius:8px;border:1px solid #1a1d21;background:#0a0c0e;color:inherit;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;text-align:center}
+body.light .choice-btn{background:#f5f6f8;border-color:#e0e2e6}
+.choice-btn.sel{border-color:#14b8a6;background:rgba(20,184,166,.1);color:#14b8a6}
+.ing-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.ing-row input{flex:1}
+.ing-row .rm{color:#6b7280;cursor:pointer;padding:0 8px;font-size:16px}
+.result-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid #1a1d21;cursor:pointer;font-size:13px}
+.result-item:last-child{border-bottom:none}
+.result-item .rname{color:inherit}
+.result-item .rcal{color:#6b7280;font-weight:500;font-size:12px}
+.loading-text{text-align:center;padding:20px;color:#6b7280;font-size:13px}
+.api-key-banner{background:#1a1d21;border:1px solid #f87171;border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#f87171;display:none}
+.api-key-banner.show{display:block}
+.api-key-banner input{width:100%;margin-top:8px;padding:8px 10px;border-radius:6px;border:1px solid #2a2e35;background:#0a0c0e;color:#e6e8ea;font-family:inherit;font-size:12px}
+.tpl-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #1a1d21;cursor:pointer;font-size:13px}
+.tpl-item:last-child{border-bottom:none}
+.tpl-item .tname{font-weight:500}
+.tpl-item .tcal{color:#6b7280;font-size:12px}
+#barcode-reader{width:100%;border-radius:8px;overflow:hidden;margin-bottom:12px}
+.chatbox{border:1px solid #1a1d21;border-radius:8px;padding:12px;background:#0a0c0e;max-height:260px;overflow-y:auto;margin-bottom:10px}
+body.light .chatbox{background:#f5f6f8;border-color:#e0e2e6}
+.chatmsg{padding:8px 10px;border-radius:8px;margin-bottom:6px;font-size:13px;line-height:1.5}
+.chatmsg.me{background:#14b8a6;color:#0a0c0e;margin-left:auto;max-width:80%;text-align:right}
+.chatmsg.you{background:#1a1d21;color:#e6e8ea;max-width:80%}
+</style>
+</head>
+<body>
+<div id="banner"><div class="dot"></div><div class="bt"><strong>Not Ready Yet</strong><span>Early development. Check back in a few days.</span></div><div class="x" id="bannerClose">&times;</div></div>
+<div id="topbar">
+  <div class="icons"><div class="icon" id="themeBtn"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></div></div>
+  <h1 id="pageTitle">Diary</h1>
+  <div class="icons"><div class="streak"><svg viewBox="0 0 24 24"><path d="M12 2c0 4-3 6-3 10a3 3 0 0 0 6 0c0-4-3-6-3-10z"/></svg><span id="streakNum">0</span></div></div>
+</div>
+<div id="content">
+  <div class="api-key-banner" id="apiKeyBanner"><strong>USDA API key needed for food search</strong><div>Get a free key at fdc.nal.usda.gov/api-key-signup</div><input id="apiKeyInput" type="text" placeholder="Paste key, press Enter"></div>
+
+  <div class="screen active" id="screen-diary">
+    <div class="summary">
+      <div class="left"><div class="label">Remaining</div><div class="num" id="calRemain">2000</div><div class="sub"><span id="calConsumed">0</span> of <span id="calGoal">2000</span> kcal</div><div class="sub" id="exerciseDeducted" style="color:#14b8a6"></div></div>
+      <div class="ring" id="ring"><div class="pct" id="ringPct">0%</div></div>
+    </div>
+    <div class="macros">
+      <div class="macro carb"><div class="name">Carbs</div><div class="val"><span id="carbTotal">0</span><span>g</span></div></div>
+      <div class="macro fat"><div class="name">Fat</div><div class="val"><span id="fatTotal">0</span><span>g</span></div></div>
+      <div class="macro prot"><div class="name">Protein</div><div class="val"><span id="protTotal">0</span><span>g</span></div></div>
+    </div>
+    <div class="tip"><div class="tlabel">Tip of the day</div><div id="tipText"></div></div>
+    <div class="water-card"><div class="water-head"><div class="title">Water</div><div class="count"><span id="waterCount">0</span> of 8</div></div><div class="water-glasses" id="waterGlasses"></div></div>
+    <div class="sh"><span>Today</span><span class="action" id="copyYesterday">Copy yesterday</span></div>
+    <div class="meal" data-meal="breakfast"><div class="meal-h"><div class="t">Breakfast</div><div class="c" data-cal="breakfast">0 kcal</div></div><div class="meal-list" data-list="breakfast"></div><div class="meal-add" data-meal="breakfast">+ Add Food</div></div>
+    <div class="meal" data-meal="lunch"><div class="meal-h"><div class="t">Lunch</div><div class="c" data-cal="lunch">0 kcal</div></div><div class="meal-list" data-list="lunch"></div><div class="meal-add" data-meal="lunch">+ Add Food</div></div>
+    <div class="meal" data-meal="dinner"><div class="meal-h"><div class="t">Dinner</div><div class="c" data-cal="dinner">0 kcal</div></div><div class="meal-list" data-list="dinner"></div><div class="meal-add" data-meal="dinner">+ Add Food</div></div>
+    <div class="meal" data-meal="snacks"><div class="meal-h"><div class="t">Snacks</div><div class="c" data-cal="snacks">0 kcal</div></div><div class="meal-list" data-list="snacks"></div><div class="meal-add" data-meal="snacks">+ Add Food</div></div>
+  </div>
+
+  <div class="screen" id="screen-fitness">
+    <div class="sh">Log Exercise</div>
+    <div class="card"><div style="padding:14px 16px">
+      <div class="field"><label>What did you do?</label><select id="exType"><option value="0.05">Slow jog</option><option value="0.10">Running 10 km/h</option><option value="0.13">Running 12 km/h</option><option value="0.04">Walking</option><option value="0.06">Cycling</option><option value="0.05">Swimming</option><option value="0.07">HIIT</option><option value="0.03">Yoga</option><option value="0.08">Weights</option></select></div>
+      <div class="field"><label>Minutes</label><input id="exMin" type="number" placeholder="30" inputmode="numeric"></div>
+      <button class="btn-s" id="exSave" style="width:100%;padding:12px;border-radius:8px;border:none;font-weight:600;cursor:pointer;font-family:inherit">Log Exercise</button>
+    </div></div>
+    <div class="sh">Today</div>
+    <div class="card" id="exList"></div>
+  </div>
+
+  <div class="screen" id="screen-reports">
+    <div class="sh">Last 7 Days</div>
+    <div class="card"><div id="chart" class="chart"></div></div>
+    <div class="sh">Weekly Averages</div>
+    <div class="card"><div id="weeklyAvg" style="padding:14px 16px"></div></div>
+    <div class="sh">Meal Templates</div>
+    <div class="card"><div id="templateList"></div><div class="meal-add" id="saveTemplate">+ Save today as template</div></div>
+    <div class="sh">Saved Foods</div>
+    <div class="card" id="savedFoodsCard"></div>
+    <div class="sh">Search Past Days</div>
+    <div class="card"><div style="padding:12px 16px"><input id="searchDate" type="date" style="width:100%;background:#0a0c0e;border:1px solid #1a1d21;color:inherit;border-radius:6px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none"><div id="searchResult" style="margin-top:12px"></div></div></div>
+  </div>
+
+  <div class="screen" id="screen-plans">
+    <div class="sh">Meal Plans</div>
+    <div class="card"><div style="padding:14px 16px;font-size:13px;line-height:1.6;color:#9ca3af">Meal plans coming soon. Use Meal Templates in Reports to save and reload your favourite days.</div></div>
+    <div class="sh">Fitness Plans</div>
+    <div class="card"><div style="padding:14px 16px;font-size:13px;line-height:1.6;color:#9ca3af">Fitness plans coming soon. Log workouts in the Fitness tab for now.</div></div>
+  </div>
+
+  <div class="screen" id="screen-me">
+    <div class="sh">Profile</div>
+    <div class="card">
+      <div class="row" id="rowName"><span class="label">Name</span><span class="value" id="valName">Not set</span></div>
+      <div class="row" id="rowAge"><span class="label">Age</span><span class="value" id="valAge">--</span></div>
+      <div class="row" id="rowGender"><span class="label">Gender</span><span class="value" id="valGender">--</span></div>
+      <div class="row" id="rowHeight"><span class="label">Height</span><span class="value" id="valHeight">-- cm</span></div>
+      <div class="row" id="rowFitness"><span class="label">Fitness Level</span><span class="value" id="valFitness">--</span></div>
+      <div class="row" id="rowBodyFat"><span class="label">Body Fat %</span><span class="value" id="valBodyFat">--</span></div>
+      <div class="row" id="rowGoal"><span class="label">Goal Weight</span><span class="value" id="valGoal">-- kg</span></div>
+      <div class="row" id="rowCurrent"><span class="label">Current Weight</span><span class="value" id="valCurrent">-- kg</span></div>
+      <div class="row" id="rowActivity"><span class="label">Daily Activity</span><span class="value" id="valActivity">moderate</span></div>
+      <div class="row" id="rowGoalSpeed"><span class="label">Goal Speed</span><span class="value" id="valGoalSpeed">Lose slowly</span></div>
+      <div class="row" id="rowCalGoal"><span class="label">Daily Calorie Goal</span><span class="value" id="valCalGoal">2000 kcal</span></div>
+      <div style="padding:10px 16px;font-size:12px;color:#14b8a6" id="projGoal"></div>
+    </div>
+    <div class="sh">Weight Log</div>
+    <div class="card"><div id="weightList"></div><div class="meal-add" id="addWeight">+ Log Weight</div></div>
+    <div class="sh">Chat with us</div>
+    <div class="card"><div style="padding:12px 16px">
+      <div class="chatbox" id="chatbox"></div>
+      <div style="display:flex;gap:8px"><input id="chatInput" type="text" placeholder="Type anything..." style="flex:1;background:#0a0c0e;border:1px solid #1a1d21;color:inherit;border-radius:6px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none"><button class="btn-s" id="chatSend" style="padding:10px 16px;border-radius:6px;border:none;font-weight:600;cursor:pointer;font-family:inherit">Send</button></div>
+      <div style="font-size:11px;color:#6b7280;margin-top:8px">Messages save on your device.</div>
+    </div></div>
+    <div class="sh">XP &amp; Achievements</div>
+    <div class="card"><div style="padding:14px 16px">
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:8px">XP: <span id="xpVal" style="color:#14b8a6;font-weight:600">0</span></div>
+      <div style="font-size:13px;color:#9ca3af;margin-bottom:8px">Level: <span id="lvlVal" style="color:#14b8a6;font-weight:600">1</span></div>
+      <div id="badgeList"></div>
+    </div></div>
+    <div class="sh">Data</div>
+    <div class="card">
+      <div class="row" id="exportBtn"><span class="label">Export data</span><span class="value">&rarr;</span></div>
+      <div class="row" id="clearBtn"><span class="label" style="color:#f87171">Clear all data</span><span class="value">&rarr;</span></div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-premium">
+    <div class="sh">Plans</div>
+    <div class="tier"><div class="tier-h"><div class="tier-n">Free</div><div class="tier-p">$0 <span class="per">forever</span></div></div><div class="tier-f">Basic food logging<br>Daily calorie goal<br>30-day history</div></div>
+    <div class="tier"><div class="tier-h"><div class="tier-n">Super</div><div class="tier-p">$3 <span class="per">/ month</span></div></div><div class="tier-f">Everything in Free<br>Barcode scanner<br>Water tracker<br>Unlimited history</div></div>
+    <div class="tier featured"><div class="tier-badge">POPULAR</div><div class="tier-h"><div class="tier-n">Premium</div><div class="tier-p">$7.99 <span class="per">/ month</span></div></div><div class="tier-f">Everything in Super<br>Recipe importer<br>Weekly reports<br>Meal plans<br>No ads</div></div>
+    <div class="tier"><div class="tier-h"><div class="tier-n">Max</div><div class="tier-p">$14.99 <span class="per">/ month</span></div></div><div class="tier-f">Everything in Premium<br>AI plate photo<br>AI fridge photo<br>Coach chat<br>Family sharing</div></div>
+    <div class="tier"><div class="tier-h"><div class="tier-n">Lifetime</div><div class="tier-p">$499.99 <span class="per">once</span></div></div><div class="tier-f">Everything in Max<br>Forever<br>All future features</div></div>
+  </div>
+</div>
+
+<div id="nav">
+  <div class="nav-item active" data-tab="diary"><svg viewBox="0 0 24 24"><path d="M5 3h11a3 3 0 0 1 3 3v15H8a3 3 0 0 1-3-3V3z"/><path d="M5 18a3 3 0 0 1 3-3h11"/></svg><div>Diary</div></div>
+  <div class="nav-item" data-tab="fitness"><svg viewBox="0 0 24 24"><path d="M6 6v12M18 6v12M3 9h3M18 9h3M3 15h3M18 15h3"/></svg><div>Fitness</div></div>
+  <div class="nav-item" data-tab="reports"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><div>Reports</div></div>
+  <div class="nav-item" data-tab="plans"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM4 10h16M10 5v14"/></svg><div>Plans</div></div>
+  <div class="nav-item" data-tab="me"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg><div>Me</div></div>
+</div>
+
+<div id="modal" class="modal"><div class="sheet">
+  <h2 id="modalTitle">Add Food</h2>
+  <div id="entryChoice"><div class="choice-row"><div class="choice-btn" id="choiceManual">Manual</div><div class="choice-btn" id="choiceHomemade">Recipe</div><div class="choice-btn" id="choicePackaged">Packaged</div></div></div>
+  <div id="savedSection"><div class="field"><label>Saved Foods</label><input id="savedSearch" class="saved-search" type="text" placeholder="Search saved foods..."><div class="saved-list" id="savedList"></div></div></div>
+  <div id="packagedSection" style="display:none">
+    <div class="field"><label>Store (optional)</label><input id="storeInput" type="text" placeholder="e.g. Sainsbury's"></div>
+    <div class="field"><label>Food name</label><input id="foodSearchInput" type="text" placeholder="e.g. Mixed Vegetables"></div>
+    <div class="actions"><button class="btn-c" id="packagedSearch">Search USDA</button><button class="btn-c" id="barcodeBtn" style="flex:.5">Scan</button></div>
+    <div id="barcode-reader" style="display:none"></div>
+    <div id="packagedResults" style="margin-top:12px"></div>
+  </div>
+  <div id="homemadeSection" style="display:none">
+    <div class="field"><label>Recipe name</label><input id="recipeName" type="text" placeholder="e.g. Mango Lassi"></div>
+    <div id="ingredientList"></div>
+    <div class="actions"><button class="btn-c" id="addIngredient">+ Add Ingredient</button></div>
+    <div style="font-size:11px;color:#6b7280;margin-top:6px">Type ingredients like "80g mango". We'll estimate calories.</div>
+  </div>
+  <div id="manualSection">
+    <div class="field"><label>Food name</label><input id="inputName" type="text" placeholder="e.g. Chicken breast"></div>
+    <div class="field"><label>Calories (kcal)</label><input id="inputCal" type="number" placeholder="0" inputmode="numeric"></div>
+    <div class="fr"><div class="field"><label>Carbs (g)</label><input id="inputCarb" type="number" placeholder="0" inputmode="numeric"></div><div class="field"><label>Fat (g)</label><input id="inputFat" type="number" placeholder="0" inputmode="numeric"></div><div class="field"><label>Protein (g)</label><input id="inputProt" type="number" placeholder="0" inputmode="numeric"></div></div>
+  </div>
+  <div class="actions"><button class="btn-c" id="btnCancel">Cancel</button><button class="btn-s" id="btnSave">Save</button></div>
+</div></div>
+
+<div id="profileModal" class="modal"><div class="sheet"><h2 id="profileTitle">Edit</h2><div id="profileFields"></div><div class="actions"><button class="btn-c" id="profileCancel">Cancel</button><button class="btn-s" id="profileSave">Save</button></div></div></div>
+
+<div id="weightModal" class="modal"><div class="sheet"><h2>Log Weight</h2><div class="field"><label>Weight (kg)</label><input id="weightInput" type="number" step="0.1" placeholder="0.0" inputmode="decimal"></div><div class="field"><label>Date</label><input id="weightDate" type="date"></div><div class="actions"><button class="btn-c" id="weightCancel">Cancel</button><button class="btn-s" id="weightSave">Save</button></div></div></div>
+
+<div id="templateModal" class="modal"><div class="sheet"><h2>Save as Template</h2><div class="field"><label>Template name</label><input id="templateName" type="text" placeholder="e.g. Work day"></div><div class="actions"><button class="btn-c" id="templateCancel">Cancel</button><button class="btn-s" id="templateSave">Save</button></div></div></div>
+
+<div id="welcomeModal" class="modal open"><div class="sheet">
+  <h2>Welcome to Trackly</h2>
+  <div style="padding:10px 0;border-bottom:1px solid #1a1d21;font-size:13px;line-height:1.6"><strong style="color:#14b8a6;display:block;margin-bottom:2px;font-size:12px;text-transform:uppercase">1. Weigh things once</strong>When you cook a recipe, weigh ingredients once. Trackly saves it.</div>
+  <div style="padding:10px 0;border-bottom:1px solid #1a1d21;font-size:13px;line-height:1.6"><strong style="color:#14b8a6;display:block;margin-bottom:2px;font-size:12px;text-transform:uppercase">2. Import recipes</strong>Type "80g mango, 100g yogurt" and we'll estimate calories.</div>
+  <div style="padding:10px 0;border-bottom:1px solid #1a1d21;font-size:13px;line-height:1.6"><strong style="color:#14b8a6;display:block;margin-bottom:2px;font-size:12px;text-transform:uppercase">3. Log exercise</strong>Log workouts and we deduct those calories from today.</div>
+  <div style="padding:10px 0;font-size:13px;line-height:1.6"><strong style="color:#14b8a6;display:block;margin-bottom:2px;font-size:12px;text-transform:uppercase">4. It's OK to guess</strong>You'll get better with practice.</div>
+  <div class="actions"><button class="btn-s" id="welcomeClose">Got it</button></div>
+</div></div>
+
+<div id="toast"><span id="toastMsg">Food deleted</span><button id="toastUndo">UNDO</button></div>
+
+<script src="core.html"></script>
+<script src="diary.html"></script>
+<script src="food-api.html"></script>
+<script src="app.html"></script>
+</body>
+</html>
