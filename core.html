@@ -1,1 +1,280 @@
+/* TRACKLY — core.html (was core.js)
+   Storage, profile, BMR/TDEE, XP, chat, tips, theme.
+   Loads FIRST. */
 
+var K = {
+  MEALS:'trackly_meals_v3', PROFILE:'trackly_profile_v3', WEIGHT:'trackly_weight_v3',
+  WATER:'trackly_water_v3', SAVED:'trackly_saved_v3', THEME:'trackly_theme_v3',
+  RECIPES:'trackly_recipes_v3', API:'trackly_usda_key_v3', TPL:'trackly_templates_v3',
+  BANNER:'trackly_banner_v3', EX:'trackly_exercise_v3', CHAT:'trackly_chat_v3',
+  XP:'trackly_xp_v3', WELCOME:'trackly_welcome_v3'
+};
+
+window.cloudEnabled = false;
+window.cloudEndpoint = '';
+
+function cloudSave(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  if (window.cloudEnabled && window.cloudEndpoint) {
+    try {
+      fetch(window.cloudEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: key, value: value, at: Date.now() })
+      }).catch(function(){});
+    } catch (e) {}
+  }
+}
+function load(key) {
+  try { var raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
+}
+function save(key, val) { cloudSave(key, val); }
+
+function todayKey() { return new Date().toISOString().slice(0,10); }
+function yesterdayKey() { var d=new Date(); d.setDate(d.getDate()-1); return d.toISOString().slice(0,10); }
+function daysAgoKey(n) { var d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+
+function getProfile() {
+  return load(K.PROFILE) || {
+    name:'', age:'', gender:'', height:'', fitness:'', bodyFat:'',
+    goal:'', current:'', activity:'moderate', goalSpeed:'lose_slow',
+    calGoal:2000, proteinTarget:0, carbTarget:0, fatTarget:0
+  };
+}
+function saveProfile(p) { save(K.PROFILE, p); }
+
+function calcBMR(p) {
+  var w = parseFloat(p.current) || 0;
+  var h = parseFloat(p.height) || 0;
+  var a = parseFloat(p.age) || 0;
+  if (!w || !h || !a) return 0;
+  if (p.gender === 'male') return 10*w + 6.25*h - 5*a + 5;
+  if (p.gender === 'female') return 10*w + 6.25*h - 5*a - 161;
+  var m = 10*w + 6.25*h - 5*a + 5;
+  var f = 10*w + 6.25*h - 5*a - 161;
+  return (m + f) / 2;
+}
+
+function activityMultiplier(level) {
+  var map = { sedentary:1.2, light:1.375, moderate:1.55, active:1.725, athlete:1.9 };
+  return map[level] || 1.55;
+}
+
+function calcTDEE(p) {
+  var bmr = calcBMR(p);
+  if (!bmr) return 0;
+  var tdee = bmr * activityMultiplier(p.activity);
+  var bf = parseFloat(p.bodyFat);
+  if (bf && bf > 3 && bf < 60) {
+    var lean = (parseFloat(p.current) || 0) * (1 - bf/100);
+    var kmr = 370 + 21.6 * lean;
+    if (kmr > 0) tdee = kmr * activityMultiplier(p.activity);
+  }
+  return Math.round(tdee);
+}
+
+function calcCalorieGoal(p) {
+  var tdee = calcTDEE(p);
+  if (!tdee) return 2000;
+  var adj = 0;
+  if (p.goalSpeed === 'lose_slow')   adj = -250;
+  if (p.goalSpeed === 'lose_normal') adj = -500;
+  if (p.goalSpeed === 'lose_fast')   adj = -750;
+  if (p.goalSpeed === 'maintain')    adj = 0;
+  if (p.goalSpeed === 'gain_slow')   adj = 250;
+  if (p.goalSpeed === 'gain_normal') adj = 500;
+  var goal = Math.round(tdee + adj);
+  if (p.gender === 'female' && goal < 1200) goal = 1200;
+  if (p.gender === 'male'   && goal < 1500) goal = 1500;
+  return goal;
+}
+
+function calcMacroTargets(p) {
+  var cal = calcCalorieGoal(p);
+  var w = parseFloat(p.current) || 0;
+  var protein = w ? Math.round(w * 1.8) : Math.round(cal * 0.30 / 4);
+  var fat = Math.round(cal * 0.30 / 9);
+  var carb = Math.round((cal - protein*4 - fat*9) / 4);
+  if (carb < 0) carb = 0;
+  return { cal:cal, protein:protein, carb:carb, fat:fat };
+}
+
+function projectGoalDate(p) {
+  var cur = parseFloat(p.current);
+  var goal = parseFloat(p.goal);
+  if (!cur || !goal) return null;
+  var diff = cur - goal;
+  var rate = 0;
+  if (p.goalSpeed === 'lose_slow')   rate = 0.25;
+  if (p.goalSpeed === 'lose_normal') rate = 0.5;
+  if (p.goalSpeed === 'lose_fast')   rate = 0.75;
+  if (p.goalSpeed === 'maintain')    return null;
+  if (p.goalSpeed === 'gain_slow')   rate = -0.25;
+  if (p.goalSpeed === 'gain_normal') rate = -0.5;
+  if (!rate) return null;
+  var weeks = Math.abs(diff / rate);
+  if (!isFinite(weeks) || weeks < 1) return null;
+  var d = new Date();
+  d.setDate(d.getDate() + Math.round(weeks * 7));
+  return d.toISOString().slice(0,10);
+}
+
+function getWater() { var a=load(K.WATER)||{}; return a[todayKey()]||0; }
+function setWater(n) { var a=load(K.WATER)||{}; a[todayKey()]=n; save(K.WATER,a); }
+
+function getWeightLog() { return load(K.WEIGHT) || []; }
+function saveWeightLog(l) { save(K.WEIGHT, l); }
+
+function getSavedFoods() { return load(K.SAVED) || []; }
+function saveSavedFoods(l) { save(K.SAVED, l); }
+function addToSavedIfNew(item) {
+  var l = getSavedFoods();
+  var e = l.find(function(x){ return x.name.toLowerCase()===item.name.toLowerCase() && Number(x.cal)===Number(item.cal); });
+  if (!e) { l.push(item); saveSavedFoods(l); }
+}
+
+function getRecipes() { return load(K.RECIPES) || {}; }
+function saveRecipes(r) { save(K.RECIPES, r); }
+
+function getTemplates() { return load(K.TPL) || []; }
+function saveTemplates(t) { save(K.TPL, t); }
+
+function getExerciseToday() { var a=load(K.EX)||{}; return a[todayKey()]||[]; }
+function saveExerciseToday(l) { var a=load(K.EX)||{}; a[todayKey()]=l; save(K.EX,a); }
+
+function getStreak() {
+  var all = load(K.MEALS) || {};
+  var s = 0;
+  var d = new Date();
+  while (true) {
+    var k = d.toISOString().slice(0,10);
+    var day = all[k];
+    if (day) {
+      var tot = 0;
+      ['breakfast','lunch','dinner','snacks'].forEach(function(m){ tot += (day[m]||[]).length; });
+      if (tot > 0) { s++; d.setDate(d.getDate()-1); continue; }
+    }
+    break;
+  }
+  return s;
+}
+
+function getXP() { return load(K.XP) || { xp:0, badges:[] }; }
+function saveXP(x) { save(K.XP, x); }
+function addXP(n) {
+  var x = getXP();
+  x.xp += n;
+  checkBadges(x);
+  saveXP(x);
+  if (typeof renderXP === 'function') renderXP();
+}
+function checkBadges(x) {
+  var b = x.badges;
+  function has(n){ return b.indexOf(n)>-1; }
+  function give(n){ if (!has(n)) b.push(n); }
+  var s = getStreak();
+  if (s>=1) give('First log');
+  if (s>=3) give('3-day streak');
+  if (s>=7) give('7-day streak');
+  if (s>=30) give('30-day streak');
+  if (s>=100) give('100-day streak');
+  if (x.xp>=50) give('50 XP');
+  if (x.xp>=200) give('200 XP');
+  if (x.xp>=1000) give('1000 XP');
+  if (x.xp>=5000) give('5000 XP');
+  var wl = getWeightLog();
+  if (wl.length>=1) give('First weigh-in');
+  if (wl.length>=7) give('Weighed 7 times');
+  if (wl.length>=30) give('Weighed 30 times');
+  if (getWater()>=8) give('Hydrated');
+  if (getExerciseToday().length>=1) give('First workout');
+}
+function xpLevel(xp) { return 1 + Math.floor(xp/100); }
+
+function getChat() { return load(K.CHAT) || []; }
+function saveChat(c) { save(K.CHAT, c); }
+function addChatMessage(text, from) {
+  var c = getChat();
+  c.push({ text:text, from:from||'me', at:Date.now() });
+  saveChat(c);
+  return c;
+}
+
+var TIPS = [
+  "Drink a glass of water before every meal — it reduces how much you eat.",
+  "Protein keeps you full longer. Add eggs, chicken or beans to breakfast.",
+  "Don't skip breakfast. People who eat breakfast eat less overall.",
+  "Eat slowly. It takes 20 minutes for your brain to feel full.",
+  "Add one vegetable to every meal — even a small handful helps.",
+  "Sleep 7-9 hours. Tired brains crave sugar.",
+  "Walk 10 minutes after eating. It helps your blood sugar.",
+  "Swap fizzy drinks for sparkling water with lemon.",
+  "Pack snacks the night before — you'll skip the vending machine.",
+  "Weigh yourself at the same time every day for the most accurate trend.",
+  "Don't drink your calories. Juice and lattes add up fast.",
+  "Half your plate vegetables, quarter protein, quarter carbs.",
+  "If you're hungry at night, try a glass of water first.",
+  "Eat from a smaller plate — your brain thinks you ate more.",
+  "Never shop for food when you're hungry.",
+  "Carbs aren't the enemy. Portion size is.",
+  "Take the stairs. Tiny movements add up over a year.",
+  "A handful of nuts is a snack. A bag is a meal.",
+  "You can't out-train a bad diet.",
+  "Progress isn't linear. Bad days are normal. Keep going.",
+  "Fiber keeps you full. Beans, oats, vegetables, fruit.",
+  "Coffee is fine — but watch the sugar and cream.",
+  "Don't weigh yourself after a salty meal — it's water weight.",
+  "Eat protein at breakfast. It kills 11am snacking.",
+  "Prep tomorrow's lunch tonight. It saves 400 calories.",
+  "Chew gum if you snack out of boredom.",
+  "Water first, food second.",
+  "Eat when you're hungry. Stop when you're 80% full.",
+  "A cheat meal doesn't ruin a cheat week.",
+  "Motivation is garbage. Habit is what works."
+];
+
+function getTipOfDay() {
+  var d = new Date();
+  var idx = d.getFullYear()*400 + (d.getMonth()+1)*31 + d.getDate();
+  return TIPS[idx % TIPS.length];
+}
+
+function applyTheme(th) {
+  if (th === 'light') document.body.classList.add('light');
+  else document.body.classList.remove('light');
+}
+function initTheme() { applyTheme(load(K.THEME) || 'dark'); }
+
+function initBanner() {
+  var closed = load(K.BANNER);
+  var el = document.getElementById('banner');
+  if (el && closed === 'closed') el.style.display = 'none';
+}
+
+var _toastTimer = null, _undoAction = null;
+function showUndo(msg, fn) {
+  var t = document.getElementById('toast');
+  if (!t) return;
+  document.getElementById('toastMsg').textContent = msg;
+  _undoAction = fn;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ t.classList.remove('show'); _undoAction = null; }, 5000);
+}
+function bindToast() {
+  var btn = document.getElementById('toastUndo');
+  if (btn) btn.addEventListener('click', function(){
+    if (_undoAction) _undoAction();
+    document.getElementById('toast').classList.remove('show');
+    _undoAction = null;
+  });
+}
+
+function fmt(n) { return Math.round(Number(n) || 0); }
+function escapeHTML(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function initCore() { initTheme(); initBanner(); bindToast(); }
+window.addEventListener('DOMContentLoaded', initCore);
